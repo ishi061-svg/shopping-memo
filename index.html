@@ -202,8 +202,15 @@
 
     /* タイトルとひと言の説明 */
     h1 {
-      margin: 8px 0 4px;
-      color: #4a7c59;
+      margin: 8px 0 8px;
+      line-height: 0; /* 画像の下にできる、すき間を消す */
+    }
+
+    /* タイトルの画像：ふつうは幅220px。画面がせまいときは、はみ出さないように縮む */
+    h1 img {
+      width: 220px;
+      max-width: 100%;
+      height: auto;
     }
 
     .lead {
@@ -236,7 +243,8 @@
 </head>
 <body>
   <main>
-    <h1>買い物メモ</h1>
+    <!-- タイトル：フォーク Pro で作った画像。alt に書いた文字が、読み上げソフトや検索で使われる -->
+    <h1><img src="images/title.png" alt="買い物メモ" width="654" height="138"></h1>
     <p class="lead">よく買う物はワンタッチで追加。買った物は下に移ります。</p>
 
     <!-- 品物の名前を書いて追加する -->
