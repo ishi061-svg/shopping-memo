@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>買い物メモ</title>
+  <style>
+    /* ページ全体 */
+    body {
+      margin: 0;
+      padding: 16px;
+      background: #f7f5f0;
+      color: #333333;
+      font-family: sans-serif;
+    }
+
+    /* 中身の幅：広い画面でも横に伸びすぎないようにする */
+    main {
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    /* 入力欄と追加ボタンを横に並べる */
+    #add-form {
+      display: flex;
+      gap: 8px;
+    }
+
+    #item-input {
+      flex: 1;      /* 残りの幅いっぱいに広げる */
+      min-width: 0; /* せまい画面では、入力欄のほうが縮む */
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #cccccc;
+      border-radius: 8px;
+    }
+
+    #add-button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      background: #4a7c59;
+      color: #ffffff;
+      white-space: nowrap; /* 「追／加」と2行に折れないようにする */
+      cursor: pointer;
+    }
+
+    /* 品物のリスト */
+    #item-list {
+      list-style: none; /* 先頭の黒丸を消す */
+      padding: 0;
+    }
+
+    #item-list li {
+      display: flex; /* チェック・名前・削除ボタンを横に並べる */
+      align-items: center;
+      gap: 4px; /* ボタンの間を詰めて、名前の場所を広くする */
+      padding: 6px 6px 6px 12px;
+      margin-bottom: 8px;
+      background: #ffffff;
+      border-radius: 8px;
+    }
+
+    /* チェックボックスを押しやすい大きさにする */
+    #item-list input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0; /* 名前が長くても、チェックボックスはつぶさない */
+      cursor: pointer;
+    }
+
+    /* チェックボックスと品物の名前：残りの幅いっぱいに広げる */
+    .item-name {
+      flex: 1;
+      min-width: 0;
+      min-height: 44px; /* 指で押しやすい高さ */
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow-wrap: anywhere; /* 長い英数字でも、はみ出さずに折り返す */
+      cursor: pointer;
+    }
+
+    /* 買った物：行全体を薄くする */
+    #item-list li.checked {
+      opacity: 0.5;
+    }
+
+    /* 買った物：名前に線を引く */
+    li.checked .item-name {
+      text-decoration: line-through;
+      color: #999999;
+    }
+
+    /* 削除ボタン・☆ボタン：見た目は小さくても、押せる範囲は指の大きさにする */
+    .delete-button,
+    .star-button {
+      flex-shrink: 0;
+      width: 36px;
+      height: 44px;
+      padding: 0;
+      border: none;
+      background: none;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .delete-button {
+      color: #999999;
+    }
+
+    /* 個数：「− 1 ＋」を横に並べる */
+    .qty {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .qty-button {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid #cccccc;
+      border-radius: 50%; /* 丸いボタン */
+      background: #ffffff;
+      color: #333333;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    /* 押せないとき（1個のときの「−」など）は薄くする */
+    .qty-button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+
+    .qty-number {
+      min-width: 1.5em; /* 2けたになっても、横にずれないように */
+      text-align: center;
+    }
+
+    /* よく買う物に登録するボタン（☆／★）の色 */
+    .star-button {
+      color: #e0a100;
+    }
+
+    /* 「よく買う物」の見出しと「編集」ボタンを横に並べる */
+    #quick-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    #quick-header h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    #edit-quick {
+      padding: 10px 8px; /* 押せる範囲を広くする */
+      border: none;
+      background: none;
+      color: #4a7c59;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* よく買う物のボタンを、横に並べて、入りきらなければ折り返す */
+    #quick-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    /* ボタンがまだ無いときの説明文 */
+    #quick-buttons.empty {
+      color: #999999;
+      font-size: 14px;
+    }
+
+    .quick-button {
+      min-height: 40px; /* 指で押しやすい高さ */
+      padding: 8px 14px;
+      border: 1px solid #4a7c59;
+      border-radius: 999px; /* 丸いボタン */
+      background: #ffffff;
+      color: #4a7c59;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* 編集中のボタン：赤っぽくして「押すと消える」と分かるようにする */
+    .quick-button.removing {
+      border-color: #c0504d;
+      color: #c0504d;
+    }
+
+    /* タイトルとひと言の説明 */
+    h1 {
+      margin: 8px 0 4px;
+      color: #4a7c59;
+    }
+
+    .lead {
+      margin: 0 0 20px;
+      color: #777777;
+      font-size: 14px;
+    }
+
+    /* 「よく買う物」と「買う物リスト」の区切り */
+    #quick {
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2ddd2;
+    }
+
+    #list-title {
+      margin: 20px 0 0;
+      font-size: 16px;
+    }
+
+    /* リストが空のときの案内 */
+    #empty-message {
+      padding: 24px 12px;
+      border: 2px dashed #e2ddd2; /* 点線の枠 */
+      border-radius: 8px;
+      color: #999999;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>買い物メモ</h1>
+    <p class="lead">よく買う物はワンタッチで追加。買った物は下に移ります。</p>
+
+    <!-- 品物の名前を書いて追加する -->
+    <form id="add-form">
+      <input id="item-input" type="text" placeholder="例：牛乳">
+      <button id="add-button" type="submit">追加</button>
+    </form>
+
+    <!-- よく買う物：押すとリストに追加される -->
+    <section id="quick">
+      <div id="quick-header">
+        <h2>よく買う物</h2>
+        <button id="edit-quick" type="button">編集</button>
+      </div>
+      <div id="quick-buttons"></div>
+    </section>
+
+    <!-- ここに品物が並ぶ -->
+    <h2 id="list-title">買う物リスト</h2>
+    <p id="empty-message">まだ何もありません。<br>上の入力欄から、品物を追加しましょう。</p>
+    <ul id="item-list"></ul>
+  </main>
+
+  <script>
+    const form = document.getElementById("add-form");
+    const input = document.getElementById("item-input");
+    const list = document.getElementById("item-list");
+
+    const quickArea = document.getElementById("quick-buttons");
+    const editButton = document.getElementById("edit-quick");
+
+    // ブラウザに保存するときの名札
+    const STORAGE_KEY = "shopping-memo-items";             // 品物のリスト
+    const COUNTS_KEY = "shopping-memo-counts";             // 品物ごとの、追加した回数
+    const FAVORITES_KEY = "shopping-memo-favorites";       // 自分で登録した「よく買う物」
+    const HIDDEN_KEY = "shopping-memo-hidden";             // 「よく買う物」から消した物
+
+    // ブラウザに保存してあるデータを読み込む（初めてのときや、読めないときは fallback を使う）
+    function load(key, fallback) {
+      try {
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) : fallback;
+      } catch (error) {
+        return fallback;
+      }
+    }
+
+    // 今のデータを全部ブラウザに保存する
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        localStorage.setItem(COUNTS_KEY, JSON.stringify(counts));
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+        localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden));
+      } catch (error) {
+        // 保存できない環境（プライベートモードなど）でも、アプリは止めずに使えるようにする
+      }
+    }
+
+    // 品物を入れておく場所（ここが本体。画面はこれを見て作り直す）
+    let items = load(STORAGE_KEY, []);
+    let counts = load(COUNTS_KEY, {});      // 例：{ "牛乳": 3, "卵": 2 }
+    let favorites = load(FAVORITES_KEY, []); // 例：[ "牛乳" ]
+    let hidden = load(HIDDEN_KEY, []);       // 例：[ "パン" ]
+    let editing = false;                     // 「よく買う物」を編集している最中か
+
+    // 個数が無い品物（個数を作る前に保存した物）は、1個にしておく
+    items.forEach(item => {
+      if (!item.quantity) item.quantity = 1;
+    });
+
+    const QUANTITY_MAX = 99; // 個数の上限
+
+    // 品物ごとにちがう番号をつけて、どれを押したか分かるようにする（読み込んだ品物の続きの番号から）
+    let nextId = items.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+
+    const QUICK_MAX = 8;   // 「よく買う物」ボタンの最大の数
+    const AUTO_MIN = 2;    // 何回追加したら、自動でボタンにするか
+
+    // リストに品物を1つ追加して、追加した回数を1増やす
+    function addItem(name) {
+      items.push({ id: nextId++, name: name, checked: false, quantity: 1 });
+      counts[name] = (counts[name] || 0) + 1;
+    }
+
+    // 自分で登録する・登録をやめる（☆⇔★）
+    function toggleFavorite(name) {
+      if (favorites.includes(name)) {
+        favorites = favorites.filter(other => other !== name);
+      } else {
+        favorites.push(name);
+        hidden = hidden.filter(other => other !== name); // 前に消していても、また出るようにする
+      }
+    }
+
+    // 「よく買う物」ボタンに出す品物を決める
+    function quickNames() {
+      // 2回以上追加した物を、回数の多い順に（自分で登録した物と、消した物は除く）
+      const auto = Object.keys(counts)
+        .filter(name => counts[name] >= AUTO_MIN)
+        .filter(name => !favorites.includes(name) && !hidden.includes(name))
+        .sort((a, b) => counts[b] - counts[a]);
+      // 自分で登録した物を先頭に、そのあとに自動の物。最大8個まで
+      return [...favorites, ...auto].slice(0, QUICK_MAX);
+    }
+
+    // 「よく買う物」ボタンを画面に作り直す
+    function renderQuick() {
+      quickArea.innerHTML = "";
+      const names = quickNames();
+
+      if (names.length === 0) {
+        quickArea.textContent = "2回以上追加した物や、☆を押した物が、ここに出ます";
+        quickArea.classList.add("empty");
+        return;
+      }
+      quickArea.classList.remove("empty");
+
+      names.forEach(name => {
+        const button = document.createElement("button");
+        button.className = "quick-button";
+
+        if (editing) {
+          // 編集中：押すと、このボタンを消す
+          button.textContent = name + " ×";
+          button.classList.add("removing");
+          button.setAttribute("aria-label", name + "をよく買う物から消す");
+          button.addEventListener("click", () => {
+            if (favorites.includes(name)) {
+              favorites = favorites.filter(other => other !== name);
+            } else {
+              hidden.push(name);
+            }
+            render();
+          });
+        } else {
+          // ふだん：押すと、リストに追加する
+          button.textContent = "＋ " + name;
+          button.addEventListener("click", () => {
+            // まだ買っていない同じ品物があるときは、二重に追加せず、個数を1つ増やす
+            const already = items.find(item => item.name === name && !item.checked);
+            if (already) {
+              already.quantity = Math.min(QUANTITY_MAX, already.quantity + 1);
+            } else {
+              addItem(name);
+            }
+            render();
+          });
+        }
+        quickArea.appendChild(button);
+      });
+    }
+
+    // 「編集」ボタン：押すたびに、編集する⇔編集を終える を切り替える
+    editButton.addEventListener("click", () => {
+      editing = !editing;
+      editButton.textContent = editing ? "完了" : "編集";
+      render();
+    });
+
+    // items の中身を見て、リストを画面に作り直す（ついでに保存もする）
+    function render() {
+      save();
+      renderQuick();
+      list.innerHTML = ""; // いったん空にする
+
+      // 品物が1つも無いときだけ、案内を出す
+      document.getElementById("empty-message").hidden = items.length > 0;
+
+      // 画面に出す順番：まだ買っていない物を上に、買った物を下にする
+      // （同じグループの中は、追加した順のまま）
+      const sorted = [
+        ...items.filter(item => !item.checked),
+        ...items.filter(item => item.checked)
+      ];
+
+      sorted.forEach(item => {
+        const li = document.createElement("li");
+        if (item.checked) li.classList.add("checked");
+
+        // 買ったらチェックする
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = item.checked;
+        checkbox.addEventListener("change", () => {
+          item.checked = checkbox.checked;
+          render();
+        });
+
+        // 品物の名前
+        const name = document.createElement("span");
+        name.textContent = item.name;
+
+        // チェックボックスと名前をひとまとめにする（名前を押してもチェックできる）
+        const label = document.createElement("label");
+        label.className = "item-name";
+        label.append(checkbox, name);
+
+        // 個数：「− 1 ＋」
+        const minus = document.createElement("button");
+        minus.className = "qty-button";
+        minus.textContent = "−";
+        minus.disabled = item.quantity <= 1; // 1個より少なくはできない
+        minus.setAttribute("aria-label", item.name + "を1つ減らす");
+        minus.addEventListener("click", () => {
+          item.quantity = Math.max(1, item.quantity - 1);
+          render();
+        });
+
+        const quantity = document.createElement("span");
+        quantity.className = "qty-number";
+        quantity.textContent = item.quantity;
+
+        const plus = document.createElement("button");
+        plus.className = "qty-button";
+        plus.textContent = "＋";
+        plus.disabled = item.quantity >= QUANTITY_MAX; // 99個より多くはできない
+        plus.setAttribute("aria-label", item.name + "を1つ増やす");
+        plus.addEventListener("click", () => {
+          item.quantity = Math.min(QUANTITY_MAX, item.quantity + 1);
+          render();
+        });
+
+        const qtyBox = document.createElement("div");
+        qtyBox.className = "qty";
+        qtyBox.append(minus, quantity, plus);
+
+        // よく買う物に登録するボタン（☆：登録していない／★：登録している）
+        const isFavorite = favorites.includes(item.name);
+        const starButton = document.createElement("button");
+        starButton.className = "star-button";
+        starButton.textContent = isFavorite ? "★" : "☆";
+        starButton.setAttribute("aria-label", item.name + (isFavorite ? "をよく買う物から外す" : "をよく買う物に登録する"));
+        starButton.addEventListener("click", () => {
+          toggleFavorite(item.name);
+          render();
+        });
+
+        // 消すボタン
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "delete-button";
+        deleteButton.textContent = "×";
+        deleteButton.setAttribute("aria-label", item.name + "を消す"); // 読み上げソフト用の説明
+        deleteButton.addEventListener("click", () => {
+          items = items.filter(other => other.id !== item.id); // この品物以外を残す
+          render();
+        });
+
+        li.append(label, qtyBox, starButton, deleteButton);
+        list.appendChild(li);
+      });
+    }
+
+    // 「追加」が押されたとき（入力欄でEnterキーを押したときも）
+    form.addEventListener("submit", event => {
+      event.preventDefault(); // ページが読み込み直されないようにする
+
+      const name = input.value.trim(); // 前後の空白を取る
+      if (name === "") return;         // 何も書いていなければ追加しない
+
+      addItem(name);
+      render();
+
+      input.value = ""; // 入力欄を空にして
+      input.focus();    // 続けて書けるようにする
+    });
+
+    // 開いたときに、保存してあったリストを画面に出す
+    render();
+  </script>
+</body>
+</html>
