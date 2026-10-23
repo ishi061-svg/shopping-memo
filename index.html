@@ -239,6 +239,12 @@
       font-size: 14px;
       text-align: center;
     }
+
+    /* 言葉の途中で改行されず、「、」や「。」の区切りで改行されるようにする */
+    #empty-message span {
+      display: inline-block;
+      max-width: 100%; /* それでも入りきらないときは、区切りの中でも改行する */
+    }
   </style>
 </head>
 <body>
@@ -264,7 +270,7 @@
 
     <!-- ここに品物が並ぶ -->
     <h2 id="list-title">買う物リスト</h2>
-    <p id="empty-message">まだ何もありません。<br>上の入力欄から、品物を追加しましょう。</p>
+    <p id="empty-message"><span>まだ何もありません。</span><br><span>上の入力欄から、</span><span>品物を追加しましょう。</span></p>
     <ul id="item-list"></ul>
   </main>
 
